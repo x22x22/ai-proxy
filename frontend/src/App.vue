@@ -5,23 +5,85 @@ import { DEFAULT_PROXY_SETTINGS, resetProxySettings } from './proxySettings'
 const proxySettings = inject('proxySettings')
 const panelOpen = ref(false)
 
+const newBypassPattern = ref('')
+
+function normaliseBypassPatterns(patterns) {
+  if (!Array.isArray(patterns)) return []
+
+  const seen = new Set()
+  const result = []
+
+  for (const pattern of patterns) {
+    if (typeof pattern !== 'string') continue
+    const trimmed = pattern.trim()
+    if (!trimmed || seen.has(trimmed)) continue
+    seen.add(trimmed)
+    result.push(trimmed)
+  }
+
+  return result
+}
+
+const bypassSummary = computed(() => {
+  const patterns = normaliseBypassPatterns(proxySettings.bypassPatterns)
+  if (patterns.length === 0) {
+    return '未设置绕过规则'
+  }
+  if (patterns.length <= 3) {
+    return `绕过：${patterns.join('、')}`
+  }
+  const preview = patterns.slice(0, 3).join('、')
+  return `绕过 ${patterns.length} 项：${preview} 等`
+})
+
 const previewUrl = computed(() => {
   const protocol = proxySettings.protocol || DEFAULT_PROXY_SETTINGS.protocol
   const host = proxySettings.host || '<proxy-host>'
   const port = proxySettings.port ? `:${proxySettings.port}` : ':<proxy-port>'
-  return `${protocol}://${host}${port}/https://example.com/path`
+  const base = `${protocol}://${host}${port}/https://example.com/path`
+  const summary = bypassSummary.value
+  return summary ? `${base} • ${summary}` : base
 })
 
 function togglePanel() {
+  if (panelOpen.value) {
+    commitBypassPatterns()
+  }
   panelOpen.value = !panelOpen.value
 }
 
 function closePanel() {
+  commitBypassPatterns()
   panelOpen.value = false
 }
 
 function resetToDefaults() {
   resetProxySettings()
+  newBypassPattern.value = ''
+}
+
+function updateBypassPattern(index, value) {
+  const next = [...proxySettings.bypassPatterns]
+  next[index] = value
+  proxySettings.bypassPatterns = next
+}
+
+function commitBypassPatterns() {
+  proxySettings.bypassPatterns = normaliseBypassPatterns(proxySettings.bypassPatterns)
+}
+
+function addBypassPattern() {
+  const trimmed = newBypassPattern.value.trim()
+  if (!trimmed) return
+  const next = [...proxySettings.bypassPatterns, trimmed]
+  proxySettings.bypassPatterns = normaliseBypassPatterns(next)
+  newBypassPattern.value = ''
+}
+
+function removeBypassPattern(index) {
+  const next = [...proxySettings.bypassPatterns]
+  next.splice(index, 1)
+  proxySettings.bypassPatterns = normaliseBypassPatterns(next)
 }
 
 onMounted(() => {
@@ -68,6 +130,37 @@ onMounted(() => {
             <span>Proxy port</span>
             <input v-model="proxySettings.port" type="text" inputmode="numeric" placeholder="8787" />
           </label>
+
+          <div class="bypass-section">
+            <span>绕过匹配规则</span>
+            <p class="hint">输入要忽略代理的完整 URL 片段，或使用 <code>/pattern/</code> 形式的正则表达式。</p>
+
+            <ul v-if="proxySettings.bypassPatterns.length" class="bypass-list">
+              <li v-for="(pattern, index) in proxySettings.bypassPatterns" :key="`${pattern}-${index}`">
+                <input
+                  :value="pattern"
+                  type="text"
+                  placeholder="例如：/\\/v1\\/healthcheck/"
+                  @input="updateBypassPattern(index, $event.target.value)"
+                  @blur="commitBypassPatterns"
+                />
+                <button type="button" class="icon" @click="removeBypassPattern(index)" aria-label="删除绕过规则">
+                  ×
+                </button>
+              </li>
+            </ul>
+            <p v-else class="empty">尚未配置任何绕过规则。</p>
+
+            <div class="bypass-add">
+              <input
+                v-model="newBypassPattern"
+                type="text"
+                placeholder="添加新的绕过规则"
+                @keyup.enter.prevent="addBypassPattern"
+              />
+              <button type="button" @click="addBypassPattern">添加</button>
+            </div>
+          </div>
         </form>
 
         <div class="actions">
@@ -166,6 +259,76 @@ input:focus,
 select:focus {
   outline: 2px solid rgba(33, 150, 243, 0.65);
   outline-offset: 2px;
+}
+
+.bypass-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.bypass-section .hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: rgba(245, 245, 245, 0.75);
+}
+
+.bypass-section .empty {
+  margin: 0;
+  font-size: 0.75rem;
+  color: rgba(245, 245, 245, 0.6);
+}
+
+.bypass-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bypass-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bypass-list li input {
+  flex: 1;
+}
+
+.bypass-list button.icon {
+  background: rgba(255, 255, 255, 0.18);
+  color: inherit;
+  border: none;
+  border-radius: 999px;
+  width: 1.8rem;
+  height: 1.8rem;
+  font-size: 1rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.bypass-list button.icon:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.bypass-add {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bypass-add input {
+  flex: 1;
+}
+
+.bypass-add button {
+  white-space: nowrap;
 }
 
 .actions {
