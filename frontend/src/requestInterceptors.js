@@ -71,7 +71,7 @@ export function rewriteUrl(url, settings) {
 
   const absoluteUrl = toAbsoluteUrl(url)
   if (shouldBypass(absoluteUrl, proxyBase, settings)) {
-    return absoluteUrl
+    return typeof url === 'string' ? url : absoluteUrl
   }
 
   return `${proxyBase}${absoluteUrl}`
