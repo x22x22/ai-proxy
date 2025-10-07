@@ -1,6 +1,6 @@
 # AI Proxy Tampermonkey Setup
 
-[![CI](https://github.com/OWNER/ai-proxy/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/ai-proxy/actions/workflows/ci.yml)
+[![CI](https://github.com/x22x22/ai-proxy/actions/workflows/ci.yml/badge.svg)](https://github.com/x22x22/ai-proxy/actions/workflows/ci.yml)
 
 > 在正式发布前请将上方徽章中的 `OWNER` 更新为实际的 GitHub 组织或用户名；提交代码前务必确保本地测试通过，并使用与流水线一致的 Node.js 20.19.x 环境，以维持持续集成流水线处于绿色状态。
 
