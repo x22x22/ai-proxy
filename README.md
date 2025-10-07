@@ -47,6 +47,12 @@ The build outputs `dist/ai-proxy-redirector.user.js` – this file is the usersc
 - Enter the protocol (`http` or `https`), host, and port that point to your running proxy server. The default
   configuration expects `http://localhost:8787`.
 - Close the panel – settings persist automatically via Tampermonkey storage.
+- 在同一面板中可以维护「绕过列表」，用于标记不应通过代理重写的请求。例如可输入域名片段
+  （如 `internal.service`）、通配符模式（如 `*.internal`）或使用 `/pattern/flags` 形式的正则表达式
+  （如 `^https://api.example.com$`）。每行代表一条规则，可通过 **添加** 按钮或按下回车将输入保存，
+  点击规则旁的删除图标即可移除。
+- 绕过列表适合保留局域网接口、健康检查或已经通过其他手段保护的服务直连。被匹配到的请求将
+  原样发送，不再经过代理，方便逐步迁移或排查问题。
 
 ## 5. Verify request redirection
 
