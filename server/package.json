@@ -1,0 +1,15 @@
+{
+  "name": "ai-proxy-reverse-proxy",
+  "version": "0.1.0",
+  "description": "Lightweight Node.js reverse proxy that unwraps /protocol://host/... requests and forwards them to the target server.",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "http-proxy": "^1.18.1"
+  }
+}
