@@ -1,6 +1,7 @@
 <script setup>
-import { computed, inject, onMounted, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
 import { DEFAULT_PROXY_SETTINGS, resetProxySettings } from './proxySettings'
+import { OPEN_SETTINGS_EVENT } from './events'
 
 const proxySettings = inject('proxySettings')
 const panelOpen = ref(false)
@@ -86,13 +87,27 @@ function removeBypassPattern(index) {
   proxySettings.bypassPatterns = normaliseBypassPatterns(next)
 }
 
+function handleKeydown(event) {
+  if (event.key?.toLowerCase() === 'p' && event.shiftKey) {
+    event.preventDefault()
+    togglePanel()
+  }
+}
+
+function handleOpenSettings() {
+  if (!panelOpen.value) {
+    togglePanel()
+  }
+}
+
 onMounted(() => {
-  window.addEventListener('keydown', (event) => {
-    if (event.key?.toLowerCase() === 'p' && event.shiftKey) {
-      event.preventDefault()
-      togglePanel()
-    }
-  })
+  window.addEventListener('keydown', handleKeydown)
+  window.addEventListener(OPEN_SETTINGS_EVENT, handleOpenSettings)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener(OPEN_SETTINGS_EVENT, handleOpenSettings)
 })
 </script>
 

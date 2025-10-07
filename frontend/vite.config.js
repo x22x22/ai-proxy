@@ -15,7 +15,7 @@ export default defineConfig({
         description:
           'Intercepts fetch/XMLHttpRequest calls and rewrites them to a configurable reverse proxy endpoint.',
         match: ['*://*/*'],
-        grant: ['GM_getValue', 'GM_setValue'],
+        grant: ['GM_getValue', 'GM_setValue', 'GM_registerMenuCommand'],
       },
       build: {
         fileName: 'ai-proxy-redirector.user.js',
