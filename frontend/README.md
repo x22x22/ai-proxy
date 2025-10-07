@@ -19,6 +19,14 @@ npm run dev
 The dev server mounts the userscript UI at `http://localhost:5173`. While running in the browser you can open
 and close the settings panel via **Shift + P**.
 
+## Testing
+
+```bash
+npm run test
+```
+
+The Vitest suite covers the proxy URL 重写逻辑以及针对 `fetch`/`XMLHttpRequest` 包装器的行为。
+
 ## Building the userscript bundle
 
 ```bash
