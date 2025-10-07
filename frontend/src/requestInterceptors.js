@@ -1,7 +1,7 @@
 const FETCH_SYMBOL = Symbol('ai-proxy:original-fetch')
 const XHR_OPEN_SYMBOL = Symbol('ai-proxy:original-xhr-open')
 
-function buildProxyBase(settings) {
+export function buildProxyBase(settings) {
   const { protocol, host, port } = settings
   if (!host) return null
   const trimmedHost = host.replace(/\/$/, '')
@@ -19,11 +19,11 @@ function toAbsoluteUrl(input) {
   }
 }
 
-function shouldBypass(url, proxyBase) {
+export function shouldBypass(url, proxyBase) {
   return typeof url === 'string' && proxyBase && url.startsWith(proxyBase)
 }
 
-function rewriteUrl(url, settings) {
+export function rewriteUrl(url, settings) {
   const proxyBase = buildProxyBase(settings)
   if (!proxyBase) return url
 
@@ -35,7 +35,7 @@ function rewriteUrl(url, settings) {
   return `${proxyBase}${absoluteUrl}`
 }
 
-function wrapFetch(getSettings) {
+export function wrapFetch(getSettings) {
   if (typeof window === 'undefined' || !window.fetch || window.fetch[FETCH_SYMBOL]) {
     return
   }
@@ -71,7 +71,7 @@ function wrapFetch(getSettings) {
   window.fetch = patchedFetch
 }
 
-function wrapXMLHttpRequest(getSettings) {
+export function wrapXMLHttpRequest(getSettings) {
   if (typeof XMLHttpRequest === 'undefined') return
   if (XMLHttpRequest.prototype.open && !XMLHttpRequest.prototype.open[XHR_OPEN_SYMBOL]) {
     const originalOpen = XMLHttpRequest.prototype.open
