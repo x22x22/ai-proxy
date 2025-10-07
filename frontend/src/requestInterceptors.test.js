@@ -83,6 +83,27 @@ describe('rewriteUrl 与 bypass 逻辑', () => {
     expect(shouldBypass(proxied, proxyBase)).toBe(true)
     expect(rewriteUrl(proxied, settings)).toBe(proxied)
   })
+
+  it('当 URL 匹配绕过字符串时返回原始地址', () => {
+    const bypassSettings = { ...settings, bypassPatterns: ['service.example.com'] }
+    const target = 'https://service.example.com/api'
+    expect(rewriteUrl(target, bypassSettings)).toBe(target)
+  })
+
+  it('当 URL 匹配绕过正则时返回原始地址', () => {
+    const bypassSettings = { ...settings, bypassPatterns: ['/\\/v1\\/health/i'] }
+    const target = 'https://service.dev/v1/health'
+    expect(rewriteUrl(target, bypassSettings)).toBe(target)
+  })
+
+  it('在无效正则后仍可继续匹配其它规则', () => {
+    const bypassSettings = {
+      ...settings,
+      bypassPatterns: ['/invalid/[', 'service.example.com'],
+    }
+    const target = 'https://service.example.com/api'
+    expect(rewriteUrl(target, bypassSettings)).toBe(target)
+  })
 })
 
 describe('wrapFetch', () => {
@@ -129,6 +150,18 @@ describe('wrapFetch', () => {
     const secondRequest = originalFetch.mock.calls[0][0]
     expect(secondRequest.url).toBe('https://proxy.local/http://upstream.local/api')
   })
+
+  it('在匹配绕过规则时透传请求', async () => {
+    const settings = { protocol: 'https', host: 'proxy.local', bypassPatterns: ['upstream.local'] }
+
+    wrapFetch(() => settings)
+
+    await window.fetch('http://upstream.local/api')
+    expect(originalFetch).toHaveBeenCalledTimes(1)
+    const firstRequest = originalFetch.mock.calls[0][0]
+    expect(firstRequest).toBeInstanceOf(Request)
+    expect(firstRequest.url).toBe('http://upstream.local/api')
+  })
 })
 
 describe('wrapXMLHttpRequest', () => {
@@ -171,5 +204,18 @@ describe('wrapXMLHttpRequest', () => {
     openSpy.mockClear()
     xhr.open('POST', 'https://proxy.local/http://upstream.local/api')
     expect(openSpy).toHaveBeenCalledWith('POST', 'https://proxy.local/http://upstream.local/api')
+  })
+
+  it('在匹配绕过规则时保持原始 URL', () => {
+    const settings = {
+      protocol: 'https',
+      host: 'proxy.local',
+      bypassPatterns: ['/upstream\\.local/i'],
+    }
+    wrapXMLHttpRequest(() => settings)
+
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', 'http://UPSTREAM.local/api')
+    expect(openSpy).toHaveBeenCalledWith('POST', 'http://UPSTREAM.local/api')
   })
 })
