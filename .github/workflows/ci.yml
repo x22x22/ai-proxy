@@ -1,12 +1,6 @@
 name: CI
 
-on:
-  push:
-    branches:
-      - main
-      - master
-      - "release/**"
-  pull_request:
+on: [push, pull_request]
 
 jobs:
   frontend:
@@ -22,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.19.0
+          node-version: '20.19.x'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -30,17 +24,26 @@ jobs:
         run: npm ci
 
       - name: Run unit tests
-        run: npm run test
+        run: npm test
 
-      - name: Build userscript bundle
+      - name: Build frontend bundle
         run: npm run build
 
-      - name: Upload build artifacts
-        if: success()
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright end-to-end tests
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-dist
-          path: frontend/dist
+          name: playwright-report
+          path: frontend/playwright-report
+          if-no-files-found: warn
 
   server:
     name: Server
@@ -56,7 +59,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.19.0
+          node-version: '20.19.x'
           cache: npm
           cache-dependency-path: server/package-lock.json
 
