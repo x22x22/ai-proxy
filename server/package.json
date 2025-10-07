@@ -5,11 +5,15 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "jest"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
     "http-proxy": "^1.18.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }
