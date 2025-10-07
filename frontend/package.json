@@ -1,0 +1,20 @@
+{
+  "name": "ai-proxy-redirector",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tampermonkey userscript bundle that rewrites fetch/XMLHttpRequest calls to a configurable reverse proxy.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.5.22"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "vite": "^7.1.9",
+    "vite-plugin-monkey": "^7.1.4"
+  }
+}
