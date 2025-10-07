@@ -50,6 +50,11 @@ The build emits `dist/ai-proxy-redirector.user.js`, which is the Tampermonkey-co
   configuration via `GM_setValue` so it will be reused on future page loads.
 - The preview string in the panel shows how outgoing requests will be rewritten, e.g.
   `https://proxy.example.com:8787/https://original-target.com/api`.
+- 在同一面板内可以维护「绕过匹配规则」，用于将特定请求排除在代理之外。支持输入普通字符串
+  （如 `internal.service`）、通配符模式（如 `*.internal`）或 `/pattern/flags` 形式的正则表达式（如
+  `^https://api.example.com$`）。每条规则占一行，可通过 **添加** 按钮或回车保存，点选对应的删除按钮
+  即可移除。被匹配到的请求会直接发往原目标。
+- 预览字符串会在末尾追加绕过规则的摘要，帮助你确认哪些主机或路径会被保留为直连。
 
 You can reset to the default (`http://localhost:8787`) at any time via the **Reset to defaults** button in the
 panel.
