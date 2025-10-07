@@ -19,8 +19,50 @@ function toAbsoluteUrl(input) {
   }
 }
 
-export function shouldBypass(url, proxyBase) {
-  return typeof url === 'string' && proxyBase && url.startsWith(proxyBase)
+function matchesBypassPattern(url, pattern) {
+  if (typeof url !== 'string' || typeof pattern !== 'string') return false
+
+  const trimmed = pattern.trim()
+  if (!trimmed) return false
+
+  if (trimmed.startsWith('/') && trimmed.length > 1) {
+    const lastSlashIndex = trimmed.lastIndexOf('/')
+
+    if (lastSlashIndex > 0) {
+      const patternBody = trimmed.slice(1, lastSlashIndex)
+      const flags = trimmed.slice(lastSlashIndex + 1)
+
+      try {
+        const regex = new RegExp(patternBody, flags)
+        return regex.test(url)
+      } catch (error) {
+        console.warn('[ai-proxy] Invalid bypass regex pattern, ignoring', trimmed, error)
+      }
+    }
+  }
+
+  return url.includes(trimmed)
+}
+
+export function shouldBypass(url, proxyBase, settings) {
+  if (typeof url !== 'string') return false
+
+  if (proxyBase && url.startsWith(proxyBase)) {
+    return true
+  }
+
+  const patterns = settings?.bypassPatterns
+  if (!Array.isArray(patterns) || patterns.length === 0) {
+    return false
+  }
+
+  for (const pattern of patterns) {
+    if (matchesBypassPattern(url, pattern)) {
+      return true
+    }
+  }
+
+  return false
 }
 
 export function rewriteUrl(url, settings) {
@@ -28,7 +70,7 @@ export function rewriteUrl(url, settings) {
   if (!proxyBase) return url
 
   const absoluteUrl = toAbsoluteUrl(url)
-  if (shouldBypass(absoluteUrl, proxyBase)) {
+  if (shouldBypass(absoluteUrl, proxyBase, settings)) {
     return absoluteUrl
   }
 
