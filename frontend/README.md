@@ -40,6 +40,8 @@ The build emits `dist/ai-proxy-redirector.user.js`, which is the Tampermonkey-co
 - Click the floating **Open proxy settings** pill or press **Shift + P** to toggle the settings panel.
 - Provide the proxy protocol (`http` or `https`), host, and port. The userscript immediately persists the
   configuration via `GM_setValue` so it will be reused on future page loads.
+- Use the **Bypass patterns** section to list hostnames, wildcard patterns (e.g. `*.example.com`), or
+  JavaScript-style regular expressions (e.g. `/.internal$/`) that should skip the proxy entirely.
 - The preview string in the panel shows how outgoing requests will be rewritten, e.g.
   `https://proxy.example.com:8787/https://original-target.com/api`.
 

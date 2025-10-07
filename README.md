@@ -46,6 +46,8 @@ The build outputs `dist/ai-proxy-redirector.user.js` – this file is the usersc
 - Click the floating **Open proxy settings** pill (or press **Shift + P**) to reveal the settings panel.
 - Enter the protocol (`http` or `https`), host, and port that point to your running proxy server. The default
   configuration expects `http://localhost:8787`.
+- Add any **Bypass patterns** for hosts that should not be proxied (e.g. `api.internal.local`, `*.trusted.com`, or
+  regular expressions such as `/.gov$/i`). Matching requests will be sent directly without touching the proxy.
 - Close the panel – settings persist automatically via Tampermonkey storage.
 
 ## 5. Verify request redirection

@@ -6,6 +6,7 @@ export const DEFAULT_PROXY_SETTINGS = Object.freeze({
   protocol: 'http',
   host: 'localhost',
   port: '8787',
+  bypassList: [],
 })
 
 function getStorageValue() {
@@ -34,7 +35,10 @@ function setStorageValue(value) {
 
 function parseSettings(rawValue) {
   if (!rawValue) {
-    return { ...DEFAULT_PROXY_SETTINGS }
+    return {
+      ...DEFAULT_PROXY_SETTINGS,
+      bypassList: [...DEFAULT_PROXY_SETTINGS.bypassList],
+    }
   }
 
   try {
@@ -42,10 +46,14 @@ function parseSettings(rawValue) {
     return {
       ...DEFAULT_PROXY_SETTINGS,
       ...parsed,
+      bypassList: normaliseBypassList(parsed?.bypassList ?? parsed?.bypassPatterns),
     }
   } catch (error) {
     console.warn('[ai-proxy] Unable to parse stored settings, falling back to defaults', error)
-    return { ...DEFAULT_PROXY_SETTINGS }
+    return {
+      ...DEFAULT_PROXY_SETTINGS,
+      bypassList: [...DEFAULT_PROXY_SETTINGS.bypassList],
+    }
   }
 }
 
@@ -66,20 +74,51 @@ function normalisePort(port) {
   return asString.replace(/[^0-9]/g, '')
 }
 
+function normaliseBypassList(list) {
+  if (!list) return []
+
+  const entries = Array.isArray(list) ? list : [list]
+  const seen = new Set()
+  const normalised = []
+
+  for (const entry of entries) {
+    if (entry == null) continue
+    const value = String(entry).trim()
+    if (!value || seen.has(value)) continue
+    seen.add(value)
+    normalised.push(value)
+  }
+
+  return normalised
+}
+
 let state
 
 export function useProxySettings() {
   if (!state) {
     const initial = parseSettings(getStorageValue())
-    state = reactive({ ...initial })
+    state = reactive({
+      ...initial,
+      bypassList: [...(initial.bypassList ?? [])],
+    })
 
     watch(
       state,
       (value) => {
+        const bypassList = normaliseBypassList(value.bypassList)
+        const currentList = Array.isArray(value.bypassList) ? value.bypassList : []
+        const listsDiffer =
+          currentList.length !== bypassList.length ||
+          currentList.some((entry, index) => entry !== bypassList[index])
+
+        if (listsDiffer || currentList !== value.bypassList) {
+          state.bypassList = [...bypassList]
+        }
         const serialised = JSON.stringify({
           protocol: normaliseProtocol(value.protocol),
           host: normaliseHost(value.host),
           port: normalisePort(value.port),
+          bypassList,
         })
         setStorageValue(serialised)
       },
@@ -96,16 +135,21 @@ export function getProxySettingsSnapshot() {
     protocol: normaliseProtocol(current.protocol),
     host: normaliseHost(current.host),
     port: normalisePort(current.port),
+    bypassList: normaliseBypassList(current.bypassList),
   }
 }
 
 export function resetProxySettings() {
   if (!state) {
-    state = reactive({ ...DEFAULT_PROXY_SETTINGS })
+    state = reactive({
+      ...DEFAULT_PROXY_SETTINGS,
+      bypassList: [...DEFAULT_PROXY_SETTINGS.bypassList],
+    })
     return state
   }
   state.protocol = DEFAULT_PROXY_SETTINGS.protocol
   state.host = DEFAULT_PROXY_SETTINGS.host
   state.port = DEFAULT_PROXY_SETTINGS.port
+  state.bypassList = [...DEFAULT_PROXY_SETTINGS.bypassList]
   return state
 }

@@ -4,12 +4,33 @@ import { DEFAULT_PROXY_SETTINGS, resetProxySettings } from './proxySettings'
 
 const proxySettings = inject('proxySettings')
 const panelOpen = ref(false)
+const newBypassPattern = ref('')
 
-const previewUrl = computed(() => {
+const previewDetails = computed(() => {
   const protocol = proxySettings.protocol || DEFAULT_PROXY_SETTINGS.protocol
   const host = proxySettings.host || '<proxy-host>'
   const port = proxySettings.port ? `:${proxySettings.port}` : ':<proxy-port>'
-  return `${protocol}://${host}${port}/https://example.com/path`
+  const sampleUrl = `${protocol}://${host}${port}/https://example.com/path`
+  const bypassList = Array.isArray(proxySettings.bypassList)
+    ? proxySettings.bypassList.filter((entry) => entry && entry.trim())
+    : []
+
+  let bypassMessage =
+    'All requests will be proxied unless they already point at the proxy host.'
+
+  if (bypassList.length === 1) {
+    bypassMessage = `Requests matching "${bypassList[0]}" will skip the proxy.`
+  } else if (bypassList.length > 1) {
+    bypassMessage = `Requests matching any of ${bypassList
+      .map((pattern) => `"${pattern}"`)
+      .join(', ')} will skip the proxy.`
+  }
+
+  return {
+    sampleUrl,
+    bypassList,
+    bypassMessage,
+  }
 })
 
 function togglePanel() {
@@ -22,6 +43,27 @@ function closePanel() {
 
 function resetToDefaults() {
   resetProxySettings()
+  newBypassPattern.value = ''
+}
+
+function addBypassPattern() {
+  const value = newBypassPattern.value.trim()
+  if (!value) return
+
+  const existing = Array.isArray(proxySettings.bypassList)
+    ? proxySettings.bypassList
+    : []
+
+  if (!existing.includes(value)) {
+    proxySettings.bypassList = [...existing, value]
+  }
+
+  newBypassPattern.value = ''
+}
+
+function removeBypassPattern(index) {
+  if (!Array.isArray(proxySettings.bypassList)) return
+  proxySettings.bypassList = proxySettings.bypassList.filter((_, itemIndex) => itemIndex !== index)
 }
 
 onMounted(() => {
@@ -46,8 +88,9 @@ onMounted(() => {
           <h1>Tampermonkey Proxy Settings</h1>
           <p>
             All <code>fetch</code> and <code>XMLHttpRequest</code> calls will be rewritten to
-            <code>{{ previewUrl }}</code>.
+            <code>{{ previewDetails.sampleUrl }}</code>.
           </p>
+          <p class="bypass-preview">{{ previewDetails.bypassMessage }}</p>
         </header>
 
         <form class="form" @submit.prevent>
@@ -68,6 +111,32 @@ onMounted(() => {
             <span>Proxy port</span>
             <input v-model="proxySettings.port" type="text" inputmode="numeric" placeholder="8787" />
           </label>
+
+          <div class="bypass-section">
+            <span class="section-label">Bypass patterns</span>
+            <p class="hint">
+              Requests matching these hostnames or JavaScript-style regular expressions will not be proxied.
+            </p>
+            <div class="bypass-input">
+              <input
+                v-model="newBypassPattern"
+                type="text"
+                placeholder="e.g. api.example.com or /.internal/"
+                @keyup.enter.prevent="addBypassPattern"
+              />
+              <button type="button" class="secondary" @click="addBypassPattern" :disabled="!newBypassPattern.trim()">
+                Add
+              </button>
+            </div>
+            <ul v-if="previewDetails.bypassList.length" class="bypass-list">
+              <li v-for="(pattern, index) in previewDetails.bypassList" :key="pattern">
+                <code>{{ pattern }}</code>
+                <button type="button" class="icon" @click="removeBypassPattern(index)" aria-label="Remove pattern">
+                  ✕
+                </button>
+              </li>
+            </ul>
+          </div>
         </form>
 
         <div class="actions">
@@ -131,6 +200,10 @@ onMounted(() => {
   line-height: 1.4;
 }
 
+.proxy-panel p + p {
+  margin-top: 0.35rem;
+}
+
 .proxy-panel code {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   background: rgba(255, 255, 255, 0.08);
@@ -143,6 +216,11 @@ onMounted(() => {
   flex-direction: column;
   gap: 0.75rem;
   margin-bottom: 1rem;
+}
+
+form .hint {
+  color: rgba(245, 245, 245, 0.75);
+  font-size: 0.78rem;
 }
 
 label {
@@ -166,6 +244,63 @@ input:focus,
 select:focus {
   outline: 2px solid rgba(33, 150, 243, 0.65);
   outline-offset: 2px;
+}
+
+.bypass-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.section-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.bypass-input {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.bypass-input input {
+  flex: 1;
+}
+
+.bypass-input button {
+  white-space: nowrap;
+}
+
+.bypass-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.bypass-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bypass-list button.icon {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0.1rem 0.25rem;
+}
+
+.bypass-list button.icon:hover {
+  color: #ff8a80;
+}
+
+.bypass-preview {
+  color: rgba(245, 245, 245, 0.78);
 }
 
 .actions {
