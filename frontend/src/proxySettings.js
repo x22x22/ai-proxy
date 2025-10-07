@@ -1,4 +1,5 @@
 import { reactive, watch } from 'vue'
+import { normaliseBypassList } from './bypassPatterns'
 
 const STORAGE_KEY = 'ai-proxy.redirector-settings'
 
@@ -74,22 +75,14 @@ function normalisePort(port) {
   return asString.replace(/[^0-9]/g, '')
 }
 
-function normaliseBypassList(list) {
-  if (!list) return []
-
-  const entries = Array.isArray(list) ? list : [list]
-  const seen = new Set()
-  const normalised = []
-
-  for (const entry of entries) {
-    if (entry == null) continue
-    const value = String(entry).trim()
-    if (!value || seen.has(value)) continue
-    seen.add(value)
-    normalised.push(value)
+function listsEqual(a, b) {
+  if (a === b) return true
+  if (!Array.isArray(a) || !Array.isArray(b)) return false
+  if (a.length !== b.length) return false
+  for (let index = 0; index < a.length; index += 1) {
+    if (a[index] !== b[index]) return false
   }
-
-  return normalised
+  return true
 }
 
 let state
@@ -106,12 +99,7 @@ export function useProxySettings() {
       state,
       (value) => {
         const bypassList = normaliseBypassList(value.bypassList)
-        const currentList = Array.isArray(value.bypassList) ? value.bypassList : []
-        const listsDiffer =
-          currentList.length !== bypassList.length ||
-          currentList.some((entry, index) => entry !== bypassList[index])
-
-        if (listsDiffer || currentList !== value.bypassList) {
+        if (!listsEqual(state.bypassList, bypassList)) {
           state.bypassList = [...bypassList]
         }
         const serialised = JSON.stringify({

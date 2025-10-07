@@ -1,5 +1,6 @@
 <script setup>
 import { computed, inject, onMounted, ref } from 'vue'
+import { normaliseBypassList } from './bypassPatterns'
 import { DEFAULT_PROXY_SETTINGS, resetProxySettings } from './proxySettings'
 
 const proxySettings = inject('proxySettings')
@@ -11,9 +12,7 @@ const previewDetails = computed(() => {
   const host = proxySettings.host || '<proxy-host>'
   const port = proxySettings.port ? `:${proxySettings.port}` : ':<proxy-port>'
   const sampleUrl = `${protocol}://${host}${port}/https://example.com/path`
-  const bypassList = Array.isArray(proxySettings.bypassList)
-    ? proxySettings.bypassList.filter((entry) => entry && entry.trim())
-    : []
+  const bypassList = normaliseBypassList(proxySettings.bypassList)
 
   let bypassMessage =
     'All requests will be proxied unless they already point at the proxy host.'
@@ -50,20 +49,16 @@ function addBypassPattern() {
   const value = newBypassPattern.value.trim()
   if (!value) return
 
-  const existing = Array.isArray(proxySettings.bypassList)
-    ? proxySettings.bypassList
-    : []
-
-  if (!existing.includes(value)) {
-    proxySettings.bypassList = [...existing, value]
-  }
+  const existing = normaliseBypassList(proxySettings.bypassList)
+  const updated = normaliseBypassList([...existing, value])
+  proxySettings.bypassList = updated
 
   newBypassPattern.value = ''
 }
 
 function removeBypassPattern(index) {
-  if (!Array.isArray(proxySettings.bypassList)) return
-  proxySettings.bypassList = proxySettings.bypassList.filter((_, itemIndex) => itemIndex !== index)
+  const existing = normaliseBypassList(proxySettings.bypassList)
+  proxySettings.bypassList = existing.filter((_, itemIndex) => itemIndex !== index)
 }
 
 onMounted(() => {
