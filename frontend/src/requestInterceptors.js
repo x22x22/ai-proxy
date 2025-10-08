@@ -1,5 +1,6 @@
 const FETCH_SYMBOL = Symbol('ai-proxy:original-fetch')
 const XHR_OPEN_SYMBOL = Symbol('ai-proxy:original-xhr-open')
+const ES_SYMBOL = Symbol('ai-proxy:original-eventsource')
 
 export function buildProxyBase(settings) {
   const { protocol, host, port } = settings
@@ -134,8 +135,47 @@ export function wrapXMLHttpRequest(getSettings) {
   }
 }
 
+export function wrapEventSource(getSettings) {
+  if (typeof window === 'undefined') return
+
+  const OriginalEventSource = window.EventSource
+  if (!OriginalEventSource || OriginalEventSource[ES_SYMBOL]) {
+    return
+  }
+
+  const ProxiedEventSource = function (url, eventSourceInitDict) {
+    const settings = getSettings()
+
+    if (!settings?.host) {
+      return new OriginalEventSource(url, eventSourceInitDict)
+    }
+
+    const normalisedUrl =
+      url instanceof URL ? url.href : typeof url === 'string' ? url : String(url ?? '')
+    const rewritten = rewriteUrl(normalisedUrl, settings)
+
+    return new OriginalEventSource(rewritten, eventSourceInitDict)
+  }
+
+  for (const key of Reflect.ownKeys(OriginalEventSource)) {
+    if (key === 'prototype' || key === 'length' || key === 'name') continue
+    const descriptor = Object.getOwnPropertyDescriptor(OriginalEventSource, key)
+    if (descriptor) {
+      Object.defineProperty(ProxiedEventSource, key, descriptor)
+    }
+  }
+
+  Object.setPrototypeOf(ProxiedEventSource, OriginalEventSource)
+  ProxiedEventSource.prototype = OriginalEventSource.prototype
+
+  ProxiedEventSource[ES_SYMBOL] = OriginalEventSource
+
+  window.EventSource = ProxiedEventSource
+}
+
 export function installRequestInterceptors(getSettings) {
   if (typeof window === 'undefined') return
   wrapFetch(getSettings)
   wrapXMLHttpRequest(getSettings)
+  wrapEventSource(getSettings)
 }

@@ -2,7 +2,7 @@
   "name": "ai-proxy-redirector",
   "private": true,
   "version": "0.1.0",
-  "description": "Tampermonkey userscript bundle that rewrites fetch/XMLHttpRequest calls to a configurable reverse proxy.",
+  "description": "Tampermonkey userscript bundle that rewrites fetch/XMLHttpRequest/EventSource calls to a configurable reverse proxy.",
   "type": "module",
   "scripts": {
     "dev": "vite",

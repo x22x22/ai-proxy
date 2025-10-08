@@ -122,8 +122,8 @@ onBeforeUnmount(() => {
         <header>
           <h1>Tampermonkey Proxy Settings</h1>
           <p>
-            All <code>fetch</code> and <code>XMLHttpRequest</code> calls will be rewritten to
-            <code>{{ previewUrl }}</code>.
+            All <code>fetch</code>, <code>XMLHttpRequest</code>, and <code>EventSource</code> traffic will be
+            rewritten to <code>{{ previewUrl }}</code>.
           </p>
         </header>
 
