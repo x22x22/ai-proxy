@@ -40,3 +40,16 @@ that URL. Responses stream back to the client unchanged.
 
 For CORS preflight (`OPTIONS`) requests, the server automatically answers when the origin matches the
 `ALLOWED_ORIGINS` list.
+
+## WebSocket proxying
+
+The proxy also supports tunnelling WebSocket connections. Point your client at the proxy using the same path format,
+for example:
+
+```
+ws://localhost:8787/ws://echo.websocket.org/
+```
+
+The server validates the `Origin` header using the same allow list as HTTP requests. When the origin is not allowed,
+the upgrade request is rejected with `403 Forbidden`. Successful upgrades forward to the upstream `ws://`/`wss://`
+target using [`http-proxy`](https://www.npmjs.com/package/http-proxy)'s WebSocket support.

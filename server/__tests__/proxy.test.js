@@ -2,6 +2,7 @@ const {
   parseTargetUrl,
   applyCors,
   createProxy,
+  isOriginAllowed,
 } = require('../lib/proxy')
 
 describe('parseTargetUrl', () => {
@@ -10,13 +11,54 @@ describe('parseTargetUrl', () => {
     expect(target).toBe('https://example.com/path?a=1')
   })
 
-  test('returns null when protocol is not http or https', () => {
+  test('returns fully qualified URL for ws targets', () => {
+    expect(parseTargetUrl('/ws://example.com/socket')).toBe(
+      'ws://example.com/socket'
+    )
+  })
+
+  test('returns fully qualified URL for wss targets', () => {
+    expect(parseTargetUrl('/wss://secure.example.com/chat')).toBe(
+      'wss://secure.example.com/chat'
+    )
+  })
+
+  test('returns null when protocol is unsupported', () => {
     expect(parseTargetUrl('/ftp://example.com')).toBeNull()
   })
 
   test('returns null when URL is missing', () => {
     expect(parseTargetUrl('/')).toBeNull()
     expect(parseTargetUrl('')).toBeNull()
+  })
+})
+
+describe('isOriginAllowed', () => {
+  test('allows when origin is in the allow list', () => {
+    const allowed = isOriginAllowed('https://allowed.com', {
+      allowAnyOrigin: false,
+      allowedOriginSet: new Set(['https://allowed.com']),
+    })
+
+    expect(allowed).toBe(true)
+  })
+
+  test('allows when origin header is missing', () => {
+    const allowed = isOriginAllowed(undefined, {
+      allowAnyOrigin: false,
+      allowedOriginSet: new Set(),
+    })
+
+    expect(allowed).toBe(true)
+  })
+
+  test('rejects origin outside of allow list', () => {
+    const allowed = isOriginAllowed('https://blocked.com', {
+      allowAnyOrigin: false,
+      allowedOriginSet: new Set(['https://allowed.com']),
+    })
+
+    expect(allowed).toBe(false)
   })
 })
 
