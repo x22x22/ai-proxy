@@ -1,7 +1,7 @@
 # AI Proxy Redirector Userscript
 
-This package bundles a Vue-powered Tampermonkey userscript that reroutes every `fetch` and `XMLHttpRequest`
-request through a configurable reverse proxy. The UI ships as an overlay panel rendered by Vue and persists
+This package bundles a Vue-powered Tampermonkey userscript that reroutes every `fetch`, `XMLHttpRequest`, and
+`EventSource` request through a configurable reverse proxy. The UI ships as an overlay panel rendered by Vue and persists
 its configuration via Tampermonkey storage (with a `localStorage` fallback for local development).
 
 ## Prerequisites
@@ -25,7 +25,7 @@ and close the settings panel via **Shift + P**.
 npm run test
 ```
 
-The Vitest suite covers the proxy URL 重写逻辑以及针对 `fetch`/`XMLHttpRequest` 包装器的行为。
+The Vitest suite covers the proxy URL 重写逻辑以及针对 `fetch`、`XMLHttpRequest`、`EventSource` 包装器的行为。
 
 端到端测试需要预先安装 Playwright 浏览器依赖：
 
@@ -39,7 +39,7 @@ npx playwright install
 npm run test:e2e
 ```
 
-该命令会先执行 `npm run build` 生成最新的 `.user.js`，再通过持久化的 Chromium 上下文加载构建产物。测试会在示例页面内触发 `fetch` 请求，验证默认情况下请求被重写到代理端点，以及添加绕过规则后请求恢复直连。
+该命令会先执行 `npm run build` 生成最新的 `.user.js`，再通过持久化的 Chromium 上下文加载构建产物。测试会在示例页面内触发 `fetch` 请求并模拟 `EventSource` 流，验证默认情况下请求被重写到代理端点，以及添加绕过规则后请求恢复直连。
 
 ## Building the userscript bundle
 

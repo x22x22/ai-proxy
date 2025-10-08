@@ -13,7 +13,7 @@ export default defineConfig({
         namespace: 'https://github.com/ai-proxy',
         version: '0.1.0',
         description:
-          'Intercepts fetch/XMLHttpRequest calls and rewrites them to a configurable reverse proxy endpoint.',
+          'Intercepts fetch/XMLHttpRequest/EventSource traffic and rewrites it to a configurable reverse proxy endpoint.',
         match: ['*://*/*'],
         grant: ['GM_getValue', 'GM_setValue', 'GM_registerMenuCommand'],
       },

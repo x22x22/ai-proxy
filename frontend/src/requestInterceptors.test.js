@@ -5,6 +5,7 @@ import {
   shouldBypass,
   wrapFetch,
   wrapXMLHttpRequest,
+  wrapEventSource,
 } from './requestInterceptors'
 
 if (typeof window === 'undefined') {
@@ -15,6 +16,7 @@ const ORIGINAL_LOCATION_DESCRIPTOR = Object.getOwnPropertyDescriptor(global, 'lo
 const ORIGINAL_LOCATION_VALUE = global.location
 const REAL_FETCH = typeof window !== 'undefined' ? window.fetch : undefined
 const REAL_XML_HTTP_REQUEST = global.XMLHttpRequest
+const REAL_EVENT_SOURCE = typeof window !== 'undefined' ? window.EventSource : undefined
 
 function withCustomLocation(href, fn) {
   Object.defineProperty(global, 'location', {
@@ -217,5 +219,99 @@ describe('wrapXMLHttpRequest', () => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', 'http://UPSTREAM.local/api')
     expect(openSpy).toHaveBeenCalledWith('POST', 'http://UPSTREAM.local/api')
+  })
+})
+
+describe('wrapEventSource', () => {
+  let constructorSpy
+  let closeSpy
+
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    constructorSpy = vi.fn()
+    closeSpy = vi.fn()
+
+    class MockEventSource {
+      constructor(url, init) {
+        this.url = url
+        this.init = init
+        this.withCredentials = init?.withCredentials ?? false
+        constructorSpy(url, init)
+      }
+
+      close() {
+        closeSpy(this)
+      }
+    }
+
+    MockEventSource.CONNECTING = 0
+    MockEventSource.OPEN = 1
+    MockEventSource.CLOSED = 2
+
+    global.EventSource = MockEventSource
+  })
+
+  afterEach(() => {
+    if (REAL_EVENT_SOURCE) {
+      global.EventSource = REAL_EVENT_SOURCE
+    } else {
+      delete global.EventSource
+    }
+  })
+
+  it('在未配置代理主机时保持原始 URL', () => {
+    wrapEventSource(() => ({}))
+
+    const es = new EventSource('https://events.example.com/stream')
+
+    expect(constructorSpy).toHaveBeenCalledWith(
+      'https://events.example.com/stream',
+      undefined,
+    )
+    expect(es.url).toBe('https://events.example.com/stream')
+    expect(EventSource.CONNECTING).toBe(0)
+  })
+
+  it('在配置代理时重写 URL 并保持实例属性', () => {
+    const settings = { protocol: 'https', host: 'proxy.local' }
+
+    wrapEventSource(() => settings)
+
+    const es = new EventSource('http://stream.local/events', { withCredentials: true })
+
+    expect(constructorSpy).toHaveBeenCalledWith(
+      'https://proxy.local/http://stream.local/events',
+      { withCredentials: true },
+    )
+    expect(es.url).toBe('https://proxy.local/http://stream.local/events')
+    expect(es.withCredentials).toBe(true)
+    expect(EventSource.OPEN).toBe(1)
+  })
+
+  it('在匹配绕过规则时透传原始 URL', () => {
+    const settings = {
+      protocol: 'https',
+      host: 'proxy.local',
+      bypassPatterns: ['/stream\\.local/i'],
+    }
+
+    wrapEventSource(() => settings)
+
+    const es = new EventSource('http://STREAM.local/events')
+
+    expect(constructorSpy).toHaveBeenCalledWith('http://STREAM.local/events', undefined)
+    expect(es.url).toBe('http://STREAM.local/events')
+  })
+
+  it('保持 close 方法行为不变', () => {
+    const settings = { protocol: 'https', host: 'proxy.local' }
+
+    wrapEventSource(() => settings)
+
+    const es = new EventSource('http://stream.local/events')
+    es.close()
+
+    expect(closeSpy).toHaveBeenCalledTimes(1)
+    expect(closeSpy).toHaveBeenCalledWith(es)
   })
 })

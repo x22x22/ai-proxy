@@ -6,7 +6,7 @@
 
 This repository contains two coordinated pieces:
 
-- `frontend/` – a Vue-powered Tampermonkey userscript that rewrites every outbound `fetch`/`XMLHttpRequest` call so
+- `frontend/` – a Vue-powered Tampermonkey userscript that rewrites every outbound `fetch`/`XMLHttpRequest`/`EventSource` call so
   it flows through a configurable proxy endpoint.
 - `server/` – a Node.js reverse proxy that accepts requests at `/protocol://host/...` and forwards them to the
   original destination while preserving method, headers, body, and streaming responses.
@@ -63,7 +63,7 @@ The build outputs `dist/ai-proxy-redirector.user.js` – this file is the usersc
 With the userscript enabled and the proxy server running:
 
 1. Open your browser’s developer tools and switch to the **Network** tab.
-2. Trigger a `fetch` or XHR request on the page (for example, run `fetch('https://httpbin.org/get')` in the console).
+2. Trigger a `fetch`、XHR 或 `EventSource` 请求（例如在控制台运行 `fetch('https://httpbin.org/get')`，或监听一个使用 Server-Sent Events 的页面）。
 3. Observe that the request URL in the network log now points to `http://<proxy-host>:<proxy-port>/<original URL>` and
    that the response arrives successfully via the proxy.
 
