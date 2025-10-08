@@ -18,6 +18,30 @@ const STRICT_TLS = process.env.UPSTREAM_REJECT_UNAUTHORIZED !== 'false'
 const allowedOriginSet = new Set(ALLOWED_ORIGINS)
 const allowAnyOrigin = allowedOriginSet.has('*')
 
+function resolveOriginPolicy(overrides = {}) {
+  const allowAny =
+    typeof overrides.allowAnyOrigin === 'boolean'
+      ? overrides.allowAnyOrigin
+      : allowAnyOrigin
+  const originSet = overrides.allowedOriginSet || allowedOriginSet
+
+  return { allowAny, originSet }
+}
+
+function isOriginAllowed(origin, overrides = {}) {
+  const { allowAny, originSet } = resolveOriginPolicy(overrides)
+
+  if (!origin) {
+    return true
+  }
+
+  if (allowAny) {
+    return true
+  }
+
+  return originSet.has(origin)
+}
+
 function parseTargetUrl(requestUrl = '') {
   if (!requestUrl || requestUrl === '/') {
     return null
@@ -32,7 +56,7 @@ function parseTargetUrl(requestUrl = '') {
     decoded = trimmed
   }
 
-  if (!/^https?:\/\//i.test(decoded)) {
+  if (!/^(https?|wss?):\/\//i.test(decoded)) {
     return null
   }
 
@@ -45,11 +69,7 @@ function parseTargetUrl(requestUrl = '') {
 }
 
 function applyCors(req, res, overrides = {}) {
-  const allowAny =
-    typeof overrides.allowAnyOrigin === 'boolean'
-      ? overrides.allowAnyOrigin
-      : allowAnyOrigin
-  const originSet = overrides.allowedOriginSet || allowedOriginSet
+  const { allowAny, originSet } = resolveOriginPolicy(overrides)
 
   const origin = req.headers.origin
 
@@ -60,7 +80,7 @@ function applyCors(req, res, overrides = {}) {
     return true
   }
 
-  if (allowAny || originSet.has(origin)) {
+  if (isOriginAllowed(origin, { allowAnyOrigin: allowAny, allowedOriginSet: originSet })) {
     res.setHeader('Access-Control-Allow-Origin', allowAny ? '*' : origin)
     res.setHeader('Vary', 'Origin')
     if (!allowAny) {
@@ -142,4 +162,6 @@ module.exports = {
   applyCors,
   createServer,
   createProxy,
+  resolveOriginPolicy,
+  isOriginAllowed,
 }

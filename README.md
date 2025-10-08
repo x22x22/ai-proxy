@@ -9,7 +9,9 @@ This repository contains two coordinated pieces:
 - `frontend/` – a Vue-powered Tampermonkey userscript that rewrites every outbound `fetch`/`XMLHttpRequest`/`EventSource` call so
   it flows through a configurable proxy endpoint.
 - `server/` – a Node.js reverse proxy that accepts requests at `/protocol://host/...` and forwards them to the
-  original destination while preserving method, headers, body, and streaming responses.
+  original destination while preserving method, headers, body, and streaming responses. WebSocket upgrades use the same
+  format (`/ws://host/...` or `/wss://host/...`) and are forwarded to the upstream socket when the origin passes the
+  allow list.
 
 Follow the steps below for an end-to-end installation.
 
@@ -69,3 +71,13 @@ With the userscript enabled and the proxy server running:
 
 If requests fail, double-check that the proxy server is reachable from the browser and that the origin you are testing
 from is present in the server’s `ALLOWED_ORIGINS` list.
+
+To confirm WebSocket forwarding, open the browser console and try:
+
+```js
+const socket = new WebSocket('ws://localhost:8787/wss://echo.websocket.events')
+socket.addEventListener('open', () => socket.send('ping via proxy'))
+socket.addEventListener('message', (event) => console.log(event.data))
+```
+
+The connection should open and echo back messages when the proxy accepts the origin.
