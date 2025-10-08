@@ -6,6 +6,7 @@ import {
   wrapFetch,
   wrapXMLHttpRequest,
   wrapEventSource,
+  wrapWebSocket,
 } from './requestInterceptors'
 
 if (typeof window === 'undefined') {
@@ -17,6 +18,7 @@ const ORIGINAL_LOCATION_VALUE = global.location
 const REAL_FETCH = typeof window !== 'undefined' ? window.fetch : undefined
 const REAL_XML_HTTP_REQUEST = global.XMLHttpRequest
 const REAL_EVENT_SOURCE = typeof window !== 'undefined' ? window.EventSource : undefined
+const REAL_WEB_SOCKET = typeof window !== 'undefined' ? window.WebSocket : undefined
 
 function withCustomLocation(href, fn) {
   Object.defineProperty(global, 'location', {
@@ -313,5 +315,108 @@ describe('wrapEventSource', () => {
 
     expect(closeSpy).toHaveBeenCalledTimes(1)
     expect(closeSpy).toHaveBeenCalledWith(es)
+  })
+})
+
+describe('wrapWebSocket', () => {
+  let constructorSpy
+  let sendSpy
+
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    constructorSpy = vi.fn()
+    sendSpy = vi.fn()
+
+    class MockWebSocket {
+      constructor(url, protocols) {
+        this.url = url
+        this.protocols = protocols
+        this.readyState = MockWebSocket.CONNECTING
+        constructorSpy(url, protocols)
+      }
+    }
+
+    MockWebSocket.CONNECTING = 0
+    MockWebSocket.OPEN = 1
+    MockWebSocket.CLOSED = 2
+
+    MockWebSocket.prototype.send = function (payload) {
+      sendSpy(payload, this)
+    }
+
+    global.WebSocket = MockWebSocket
+    window.WebSocket = MockWebSocket
+  })
+
+  afterEach(() => {
+    if (REAL_WEB_SOCKET) {
+      window.WebSocket = REAL_WEB_SOCKET
+      global.WebSocket = REAL_WEB_SOCKET
+    } else {
+      delete window.WebSocket
+      delete global.WebSocket
+    }
+  })
+
+  it('在未配置代理主机时保持原始 URL 与行为', () => {
+    wrapWebSocket(() => ({}))
+
+    const ws = new WebSocket('wss://socket.example/chat', ['json'])
+
+    expect(constructorSpy).toHaveBeenCalledWith('wss://socket.example/chat', ['json'])
+    expect(ws.url).toBe('wss://socket.example/chat')
+
+    ws.send('ping')
+    expect(sendSpy).toHaveBeenCalledWith('ping', ws)
+    expect(WebSocket.OPEN).toBe(1)
+  })
+
+  it('在配置代理时重写 URL 并保留 ws 协议', () => {
+    const settings = { protocol: 'https', host: 'proxy.local' }
+
+    wrapWebSocket(() => settings)
+
+    const ws = new WebSocket('wss://socket.local/stream', 'chat')
+
+    expect(constructorSpy).toHaveBeenCalledWith(
+      'https://proxy.local/wss://socket.local/stream',
+      'chat',
+    )
+    expect(ws.url).toBe('https://proxy.local/wss://socket.local/stream')
+
+    ws.send('hello')
+    expect(sendSpy).toHaveBeenCalledWith('hello', ws)
+  })
+
+  it('在匹配绕过规则时透传原始 ws URL', () => {
+    const settings = {
+      protocol: 'https',
+      host: 'proxy.local',
+      bypassPatterns: ['socket.local'],
+    }
+
+    wrapWebSocket(() => settings)
+
+    new WebSocket('ws://socket.local/stream')
+
+    expect(constructorSpy).toHaveBeenCalledWith('ws://socket.local/stream', undefined)
+  })
+
+  it('再次调用 wrapWebSocket 时不会重复包装', () => {
+    const settings = { protocol: 'https', host: 'proxy.local' }
+
+    wrapWebSocket(() => settings)
+    const firstWrapped = window.WebSocket
+    wrapWebSocket(() => settings)
+
+    expect(window.WebSocket).toBe(firstWrapped)
+
+    new WebSocket('wss://service.dev/ws')
+
+    expect(constructorSpy).toHaveBeenCalledTimes(1)
+    expect(constructorSpy).toHaveBeenCalledWith(
+      'https://proxy.local/wss://service.dev/ws',
+      undefined,
+    )
   })
 })

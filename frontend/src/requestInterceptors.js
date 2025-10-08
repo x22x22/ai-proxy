@@ -1,6 +1,7 @@
 const FETCH_SYMBOL = Symbol('ai-proxy:original-fetch')
 const XHR_OPEN_SYMBOL = Symbol('ai-proxy:original-xhr-open')
 const ES_SYMBOL = Symbol('ai-proxy:original-eventsource')
+const WS_SYMBOL = Symbol('ai-proxy:original-websocket')
 
 export function buildProxyBase(settings) {
   const { protocol, host, port } = settings
@@ -173,9 +174,82 @@ export function wrapEventSource(getSettings) {
   window.EventSource = ProxiedEventSource
 }
 
+export function wrapWebSocket(getSettings) {
+  if (typeof window === 'undefined') return
+
+  const OriginalWebSocket = window.WebSocket
+  if (!OriginalWebSocket || OriginalWebSocket[WS_SYMBOL]) {
+    return
+  }
+
+  const ProxiedWebSocket = function (url, protocols) {
+    const settings = getSettings()
+
+    if (!settings?.host) {
+      return new OriginalWebSocket(url, protocols)
+    }
+
+    const proxyBase = buildProxyBase(settings)
+    if (!proxyBase) {
+      return new OriginalWebSocket(url, protocols)
+    }
+
+    const normalisedUrl =
+      url instanceof URL ? url.href : typeof url === 'string' ? url : String(url ?? '')
+
+    let originalScheme = ''
+    let schemeRest = ''
+    let httpUrl = normalisedUrl
+
+    if (typeof normalisedUrl === 'string') {
+      if (normalisedUrl.startsWith('wss://')) {
+        originalScheme = 'wss'
+        schemeRest = normalisedUrl.slice('wss://'.length)
+        httpUrl = `https://${schemeRest}`
+      } else if (normalisedUrl.startsWith('ws://')) {
+        originalScheme = 'ws'
+        schemeRest = normalisedUrl.slice('ws://'.length)
+        httpUrl = `http://${schemeRest}`
+      }
+    }
+
+    const rewritten = rewriteUrl(httpUrl, settings)
+
+    if (!originalScheme) {
+      return new OriginalWebSocket(rewritten, protocols)
+    }
+
+    if (rewritten === httpUrl) {
+      return new OriginalWebSocket(`${originalScheme}://${schemeRest}`, protocols)
+    }
+
+    const finalUrl = rewritten.startsWith(proxyBase)
+      ? `${proxyBase}${originalScheme}://${schemeRest}`
+      : rewritten
+
+    return new OriginalWebSocket(finalUrl, protocols)
+  }
+
+  for (const key of Reflect.ownKeys(OriginalWebSocket)) {
+    if (key === 'prototype' || key === 'length' || key === 'name') continue
+    const descriptor = Object.getOwnPropertyDescriptor(OriginalWebSocket, key)
+    if (descriptor) {
+      Object.defineProperty(ProxiedWebSocket, key, descriptor)
+    }
+  }
+
+  Object.setPrototypeOf(ProxiedWebSocket, OriginalWebSocket)
+  ProxiedWebSocket.prototype = OriginalWebSocket.prototype
+
+  ProxiedWebSocket[WS_SYMBOL] = OriginalWebSocket
+
+  window.WebSocket = ProxiedWebSocket
+}
+
 export function installRequestInterceptors(getSettings) {
   if (typeof window === 'undefined') return
   wrapFetch(getSettings)
   wrapXMLHttpRequest(getSettings)
   wrapEventSource(getSettings)
+  wrapWebSocket(getSettings)
 }
